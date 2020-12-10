@@ -7,8 +7,8 @@ Name:		globus-gssapi-gsi
 %endif
 %global _name %(tr - _ <<< %{name})
 Epoch:          1
-Version:	13.11
-Release:	3%{?dist}
+Version:	13.12
+Release:	1%{?dist}
 Vendor:	Globus Support
 Summary:	Globus Toolkit - GSSAPI library
 
@@ -180,6 +180,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Thu Dec 10 2020 Globus Toolkit <support@globus.org> - 13.12-1
+- Include optional cert chain when importing vhost credentials
+
 * Wed Nov 27 2019 Globus Toolkit <support@globus.org> - 13.11-3
 - Packaging update to ensure priority of Globus packages
 

@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include "globus_common.h"
 #include "gssapi_test_utils.h"
 #include <gssapi.h>
@@ -10,8 +11,9 @@ int main(int argc, char *argv[])
     OM_uint32                           minor_status = GSS_S_COMPLETE;
     int                                 rc = 0;
     gss_cred_id_t                       cred = GSS_C_NO_CREDENTIAL;
+    bool                                display_chain = false;
 
-    while ((rc = getopt(argc, argv, "o:i:")) != -1)
+    while ((rc = getopt(argc, argv, "o:i:D")) != -1)
     {
         switch (rc)
         {
@@ -22,6 +24,8 @@ int main(int argc, char *argv[])
             input_buffer.value = optarg;
             input_buffer.length = strlen(optarg);
             break;
+        case 'D':
+            display_chain = true;
         }
     }
 
@@ -37,6 +41,20 @@ int main(int argc, char *argv[])
     if (major_status != GSS_S_COMPLETE)
     {
         globus_gsi_gssapi_test_print_error(stderr, major_status, minor_status);
+    }
+
+    if (display_chain)
+    {
+        gss_buffer_desc export_buffer;
+
+        major_status = gss_export_cred(
+            &minor_status,
+            cred,
+            0,
+            0,
+            &export_buffer);
+
+        printf("%.*s", (int) export_buffer.length, export_buffer.value);
     }
     return major_status != GSS_S_COMPLETE;
 }

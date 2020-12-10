@@ -81,6 +81,7 @@ GSS_CALLCONV gss_import_cred(
     char *                              filename = NULL;
     FILE *                              fp = NULL;
     FILE *                              cert_fp = NULL;
+    FILE *                              chain_fp = NULL;
     FILE *                              key_fp = NULL;
     int                                 rc = 0;
     struct stat                         st = { .st_mode = 0 };
@@ -230,6 +231,43 @@ GSS_CALLCONV gss_import_cred(
                             cert_fp = fopen(cert_path, "r");
                         }
                     }
+                    else if ((end = strstr(entry->d_name, "chain.pem")) != NULL)
+                    {
+                        char            cert_path[
+                            strlen(filename) + strlen(entry->d_name) + 2];
+
+                        snprintf(
+                            cert_path,
+                            sizeof(cert_path),
+                            "%s/%s",
+                            filename,
+                            entry->d_name);
+
+                        local_result = GLOBUS_GSI_SYSCONFIG_CHECK_CERTFILE(
+                            cert_path);
+#ifndef WIN32
+                        if (local_result != GLOBUS_SUCCESS
+                            && getuid() == 0
+                            && globus_i_gsi_gssapi_vhost_cred_owner != 0)
+                        {
+                            local_result =
+                                GLOBUS_GSI_SYSCONFIG_CHECK_CERTFILE_UID(
+                                    cert_path,
+                                    globus_i_gsi_gssapi_vhost_cred_owner);
+                        }
+#endif
+                        if (local_result != GLOBUS_SUCCESS)
+                        {
+                            *minor_status = local_result;
+                            major_status = GSS_S_FAILURE;
+
+                            goto exit;
+                        }
+                        if (chain_fp == NULL)
+                        {
+                            chain_fp = fopen(cert_path, "r");
+                        }
+                    }
                     else if (((end = strstr(entry->d_name, "key.pem")) != NULL)
                         && strcmp(end, "key.pem") == 0)
                     {
@@ -290,6 +328,18 @@ GSS_CALLCONV gss_import_cred(
                     if (rc > 0)
                     {
                         BIO_write(bp, buffer, rc);
+                    }
+                }
+                if (chain_fp != NULL)
+                {
+                    while (!feof(chain_fp))
+                    {
+                        rc = fread(buffer, 1, sizeof(buffer), chain_fp);
+
+                        if (rc > 0)
+                        {
+                            BIO_write(bp, buffer, rc);
+                        }
                     }
                 }
                 while (!feof(key_fp))
@@ -413,6 +463,10 @@ GSS_CALLCONV gss_import_cred(
     if (cert_fp != NULL)
     {
         fclose(cert_fp);
+    }
+    if (chain_fp != NULL)
+    {
+        fclose(chain_fp);
     }
     if (key_fp != NULL)
     {

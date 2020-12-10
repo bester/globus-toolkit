@@ -1,6 +1,6 @@
 AC_PREREQ([2.60])
 
-AC_INIT([globus_gssapi_gsi],[13.11],[https://github.com/globus/globus-toolkit/issues])
+AC_INIT([globus_gssapi_gsi],[13.12],[https://github.com/globus/globus-toolkit/issues])
 AC_CONFIG_MACRO_DIR([m4])
 AC_SUBST([MAJOR_VERSION], [${PACKAGE_VERSION%%.*}])
 AC_SUBST([MINOR_VERSION], [${PACKAGE_VERSION##*.}])
@@ -111,6 +111,7 @@ AC_CONFIG_FILES(
         library/Doxyfile
         library/Makefile
         test/Makefile
-        test/testcred.cnf
+        test/ca.cnf
+        test/intermediate.cnf
 )
 AC_OUTPUT

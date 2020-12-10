@@ -20,3 +20,4 @@ version.h
 *.la
 .libs
 VALGRIND-*
+*.cnf

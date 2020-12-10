@@ -16,8 +16,8 @@ check_DATA_real = \
         192.168.1.1.example.org.pem \
         192.168.1.1-2.example.org.pem
 
-testcred_links = testcred.link
-signingpolicy_links = testcred.signing_policy
+testcred_links = ca.link intermediate.link
+signingpolicy_links = ca.signing_policy intermediate.signing_policy
 
 test_creds = \
         testcred.key \
@@ -28,9 +28,12 @@ test_creds = \
         testcred-dns2.cert
 
 check_DATA = $(check_DATA_real) \
-        testcred.cakey \
-        testcred.cacert \
-        testcred.srl \
+        ca.cakey \
+        ca.cacert \
+        ca.srl \
+        intermediate.cakey \
+        intermediate.cacert \
+        intermediate.srl \
         $(test_creds) \
         $(testcred_links) \
 	$(signingpolicy_links) \
@@ -176,7 +179,7 @@ import_cred_test_SOURCES = import_cred_test.c
 import_cred_test_CPPFLAGS = $(AM_CPPFLAGS)
 
 if ENABLE_TESTS
-testcred.cacert: testcred.cnf
+ca.cacert: ca.cnf
 	umask 077; $(OPENSSL) req -passout pass:globus -subj "/CN=ca" -new -x509 -extensions v3_ca -keyout $*.cakey -out $@ -config $<
 
 .cacert.cakey:
@@ -191,34 +194,38 @@ testcred.cacert: testcred.cnf
 .link.signing_policy:
 	linkname=`cat $<`; \
 	policyfile=$${linkname%.0}.signing_policy; \
-	echo "access_id_CA      X509         '/CN=ca'" > $${policyfile}; \
+	echo "access_id_CA      X509         '/CN=$*'" > $${policyfile}; \
 	echo "pos_rights        globus        CA:sign" >> $${policyfile}; \
-	echo "cond_subjects     globus       '\"/*\"'" >> $${policyfile}; \
 	echo $${policyfile} >> $@
 
+intermediate.req: intermediate.cakey intermediate.cnf ca.signing_policy
+	$(OPENSSL) req -subj "/CN=intermediate" -new -key $< -out $@ -config ca.cnf
+
+intermediate.cacert: intermediate.req
+	umask 022; $(OPENSSL) x509 -extensions $* -extfile ca.cnf -req -passin pass:globus -days 365 -CAkey ca.cakey -CA ca.cacert -in $< -out $@
 
 .signing_policy.srl:
 	echo 01 > $@
 
-testcred.key testcred-nocn.key testcred-dns1.key testcred-dns2.key:
+testcred.key testcred-nocn.key testcred-dns1.key testcred-dns2.key intermediate.cakey:
 	umask 077; $(OPENSSL) genrsa -out $@ 2048
 
 testcred.req: testcred.key
-	$(OPENSSL) req -subj "/CN=test" -new -key $< -out $@ -config testcred.cnf
+	$(OPENSSL) req -subj "/CN=test" -new -key $< -out $@ -config intermediate.cnf
 
 testcred-nocn.req: testcred-nocn.key
-	$(OPENSSL) req -subj "/userId=test" -new -key $< -out $@ -config testcred.cnf
+	$(OPENSSL) req -subj "/userId=test" -new -key $< -out $@ -config intermediate.cnf
 
 testcred-dns1.req: testcred-dns1.key
-	$(OPENSSL) req -subj "/CN=dns1" -reqexts testcred-dns1 -new -key $< -out $@ -config testcred.cnf
+	$(OPENSSL) req -subj "/CN=dns1" -reqexts testcred-dns1 -new -key $< -out $@ -config intermediate.cnf
 
 testcred-dns2.req: testcred-dns2.key
-	$(OPENSSL) req -subj "/CN=dns2" -reqexts testcred-dns2 -new -key $< -out $@ -config testcred.cnf
+	$(OPENSSL) req -subj "/CN=dns2" -reqexts testcred-dns2 -new -key $< -out $@ -config intermediate.cnf
 
 .req.cert:
-	umask 022; $(OPENSSL) x509 -extensions $* -extfile testcred.cnf -req -passin pass:globus -days 365 -CAkey testcred.cakey -CA testcred.cacert -in $< -out $@
+	umask 022; $(OPENSSL) x509 -extensions $* -extfile intermediate.cnf -req -passin pass:globus -days 365 -CAkey intermediate.cakey -CA intermediate.cacert -in $< -out $@
 
-testcred.cert: testcred.srl
+testcred.cert: intermediate.srl
 testcred-nocn.cert: testcred.cert
 testcred-dns1.cert: testcred-nocn.cert
 testcred-dns2.cert: testcred-dns1.cert
@@ -235,7 +242,9 @@ CLEANFILES = testcred.key testcred.cert testcred.req \
              testcred-nocn.key testcred-nocn.cert testcred-nocn.req \
              testcred-dns1.cert testcred-dns1.key testcred-dns1.req \
              testcred-dns2.cert testcred-dns2.key testcred-dns2.req \
-             testcred.cakey testcred.cacert testcred.srl \
+             ca.cakey ca.cacert ca.srl \
+	     intermediate.cacert intermediate.cakey intermediate.req \
+	     intermediate.srl \
              cert_chain.txt $(THREAD_TESTS)
 
 vhost_setup: $(test_creds)
@@ -244,6 +253,7 @@ vhost_setup: $(test_creds)
             base=$${credfile%%.*}; \
             mkdir -p vhostdir/$${base}; \
             cp $${credfile} vhostdir/$${base}/$${credfile}.pem;\
+            cp intermediate.cacert vhostdir/$${base}/chain.pem;\
         done;
 	touch $@
 

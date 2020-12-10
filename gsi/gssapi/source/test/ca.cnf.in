@@ -154,9 +154,7 @@ basicConstraints = CA:true
 # basicConstraints= critical, DER:30:03:01:01:FF
 
 ####################################################################
-[testcred]
-[testcred-nocn]
-[testcred-dns1]
-subjectAltName=DNS:dns1.example.globus.org
-[testcred-dns2]
-subjectAltName=DNS:*.example.globus.org
+[intermediate]
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always,issuer
+basicConstraints = CA:true

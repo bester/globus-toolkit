@@ -1,3 +1,9 @@
+globus-gssapi-gsi (1:13.12-1+gt6.@distro@) @distro@; urgency=low
+
+  * Include optional cert chain when importing vhost credentials
+
+ -- Globus Toolkit <support@globus.org>  Thu, 10 Dec 2020 14:59:55 +0000
+
 globus-gssapi-gsi (1:13.11-2+gt6.@distro@) @distro@; urgency=low
 
   * Packaging update to ensure priority of Globus packages
